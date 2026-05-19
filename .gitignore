@@ -1,0 +1,21 @@
+# Data files (raw inputs not committed — see data/README.md for download)
+*.csv
+*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / credentials
+*.env
+credentials/
+*.json
+!package*.json
