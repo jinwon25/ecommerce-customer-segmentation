@@ -69,7 +69,7 @@
 - 핵심 파트너 LTV가 **나머지 4개 세그먼트 합산의 3배** — RFM 분류의 실제 가치 집중도
 - 장기 비활성 세그먼트는 **거액 단발 이탈자** (짧은 유지기간 + 높은 ARPU의 ARPU 역설)
 - 세그먼트별 마케팅 발송 주기 baseline (IPT p50): 핵심 파트너 **27일** · 성장형 **36일** · 유망 **54일**
-- Phase 2 핵심 발견 8개 정리: [reports/phase2_findings.md](./reports/phase2_findings.md)
+- 8개 발견 정리: [reports/cohort_ltv_findings.md](./reports/cohort_ltv_findings.md)
 
 ## 디렉토리 구조
 ```

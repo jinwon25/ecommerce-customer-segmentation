@@ -93,7 +93,7 @@ Phase는 **순차 진행**한다. 각 Phase 끝에 검증 체크포인트가 있
 **산출물**
 - `sql/01_customer_master.sql`
 - `sql/02_funnel.sql`
-- `notebooks/phase1_validation.ipynb` (기존 Python 결과와의 매칭 검증)
+- `notebooks/01_validation.ipynb` (기존 Python 결과와의 매칭 검증)
 
 ---
 
@@ -113,7 +113,7 @@ Phase는 **순차 진행**한다. 각 Phase 끝에 검증 체크포인트가 있
 **산출물**
 - `sql/03_cohort_retention.sql`
 - `sql/04_ltv.sql`
-- `analysis/phase2_ltv_notes.md` — LTV 산식 선택 이유와 한계 정리
+- `reports/ltv_methodology.md` — LTV 산식 선택 이유와 한계 정리
 
 ---
 
@@ -152,7 +152,7 @@ Phase는 **순차 진행**한다. 각 Phase 끝에 검증 체크포인트가 있
 
 **산출물**
 - `notebooks/phase3_psm.ipynb`
-- `analysis/phase3_causal_inference_notes.md` — PSM 가정, 한계, 단순 비교와의 차이
+- `reports/psm_methodology.md` — PSM 가정, 한계, 단순 비교와의 차이
 
 ---
 
@@ -183,7 +183,7 @@ Phase 3에서 도출된 쿠폰 효과를 근거로 가설을 세운다. 예:
 - 대시보드가 의사결정자 관점에서 액션 아이템 3개 이상 도출 가능
 
 **산출물**
-- `analysis/phase4_ab_test_design.md`
+- `reports/ab_test_design.md`
 - `tableau/dashboard.twbx` + Public URL
 - `README.md` 최종 정리 (프로젝트 전체 요약)
 
@@ -216,7 +216,7 @@ Phase 3에서 도출된 쿠폰 효과를 근거로 가설을 세운다. 예:
 
 **산출물**
 - `sql/05_behavioral_funnel.sql`
-- `analysis/phase5_funnel_comparison.md` — 두 funnel 비교 + 메타 인사이트
+- `reports/funnel_comparison.md` — 두 funnel 비교 + 메타 인사이트
 
 **주의사항**
 - Phase 5는 별개 프로젝트가 아니라 **본 프로젝트의 부록**으로 포지셔닝한다. GitHub README와 자소서에서도 "데이콘 확장 프로젝트의 funnel 비교 분석"으로 묶어 서술
@@ -299,14 +299,14 @@ notebooks/phase3_psm.ipynb 작성해.
 - 매칭 후 공변량 균형 (SMD) 표로 출력
 - 단순 비교 결과와 PSM ATT를 한 표에 정리
 
-분석 노트(analysis/phase3_causal_inference_notes.md)에 PSM 가정 3가지(SUTVA, Ignorability, Common Support)가 이 데이터에서 어느 정도 충족되는지 명시.
+분석 노트(reports/psm_methodology.md)에 PSM 가정 3가지(SUTVA, Ignorability, Common Support)가 이 데이터에서 어느 정도 충족되는지 명시.
 ```
 
 ### Phase 4 시작
 ```
 Phase 4 (A/B 설계 + 대시보드) 시작.
 
-먼저 analysis/phase4_ab_test_design.md 작성.
+먼저 reports/ab_test_design.md 작성.
 가설은 Phase 3의 PSM 추정치를 baseline으로 사용:
 - baseline 효과 크기 = Phase 3 ATT 결과
 - MDE = baseline의 80% (보수적 설계)
@@ -328,7 +328,7 @@ sql/05_behavioral_funnel.sql 작성해.
 - 유저 단위(fullVisitorId)로 각 단계 도달 여부 집계
 - 단계별 전환율과 누적 전환율 둘 다 산출
 
-쿼리 후 analysis/phase5_funnel_comparison.md 작성:
+쿼리 후 reports/funnel_comparison.md 작성:
 - Phase 1 거래 기반 funnel 결과와 비교표 1개
 - 두 funnel이 보여주는 이탈 지점이 다른 이유 분석
 - "데이터 종류가 분석 범위를 결정한다"는 메타 인사이트 한 단락
