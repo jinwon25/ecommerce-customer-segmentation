@@ -1,7 +1,8 @@
 import json, sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-nb = json.load(open('notebooks/phase1_validation.ipynb', 'r', encoding='utf-8'))
+path = sys.argv[1] if len(sys.argv) > 1 else 'notebooks/phase1_validation.ipynb'
+nb = json.load(open(path, 'r', encoding='utf-8'))
 for i, c in enumerate(nb['cells']):
     if c['cell_type'] != 'code':
         continue
