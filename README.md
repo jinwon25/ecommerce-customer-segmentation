@@ -57,6 +57,7 @@
 ## 주요 결과
 
 ![Phase 2 핵심 발견 8개](visualizations/phase2_summary.png)
+![Phase 3 PSM 인과추론 8개 발견](visualizations/phase3_summary.png)
 
 **Phase 1 — 세그먼테이션 · Funnel**
 - 5개 세그먼트 중 핵심 파트너 + 성장형이 전체 매출의 약 68~70% 차지
@@ -70,6 +71,13 @@
 - 장기 비활성 세그먼트는 **거액 단발 이탈자** (짧은 유지기간 + 높은 ARPU의 ARPU 역설)
 - 세그먼트별 마케팅 발송 주기 baseline (IPT p50): 핵심 파트너 **27일** · 성장형 **36일** · 유망 **54일**
 - 8개 발견 정리: [reports/cohort_ltv_findings.md](./reports/cohort_ltv_findings.md)
+
+**Phase 3 — PSM 인과추론**
+- 60일 리텐션 ATT **+25.5%p → +33.3%p** (단순 차이 vs PSM ATT) — 두 방법 모두 CI에 0 미포함, robust
+- PS 모델 McFadden R² **0.026** — selection bias가 약하다는 정량 증거 (일반 가정과 반대 방향)
+- 장기 비활성 세그먼트의 매출 ATT **+$2,120** — Phase 2 ARPU 역설과 결합된 쿠폰 재활성 효과
+- **음의 dose-response**: 10% 쿠폰 (+0.41) > 30% 쿠폰 (+0.23) — 한계 효용 체감 가설, base rate 검증 통과
+- 분석 노트 + Future Work: [reports/psm_methodology.md](./reports/psm_methodology.md)
 
 ## 디렉토리 구조
 ```
@@ -88,7 +96,7 @@
 - [x] Funnel 분석
 - [x] 코호트 리텐션 매트릭스
 - [x] LTV · 재구매 간격 심화
-- [ ] PSM 인과추론
+- [x] PSM 인과추론
 - [ ] A/B 테스트 설계
 - [ ] Tableau 대시보드
 
