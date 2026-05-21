@@ -48,21 +48,28 @@
 
 ### KPI 카드 4개 (높이 15%)
 
-각 카드는 큰 숫자 + 작은 라벨 + 비교 메시지.
+각 카드는 큰 숫자 + 작은 라벨 + 비교 메시지. 모든 데이터 소스는 `tableau/data/*.csv`.
 
-| 카드 | 값 (참고) | 보조 메시지 |
-|---|---|---|
-| 총 고객 수 | 1,468명 | 분석 기간 전체 |
-| 총 매출 | `SUM(Monetary)` 산출 | 5개 세그먼트 합산 |
-| 평균 LTV | `segment_ltv_summary` ALL 행의 LTV | ARPU × 평균 유지기간 |
-| 평균 60일 재구매율 | Phase 3 처치군 평균 (~0.38) | Phase 3 PSM ATT 결과 |
+| 카드 | 값 산출 | 데이터 소스 + 컬럼 | 표시 형식 |
+|---|---|---|---|
+| 총 고객 수 | `SUM([고객수])` 또는 `ALL` 행의 [고객수] | `ltv_summary_export.csv` | `1,468명` |
+| 총 매출 | `SUM([고객수] * [ARPU])` (`ALL` 행 제외) | `ltv_summary_export.csv` | `$5.4M` 형태 |
+| 평균 LTV (가중) | `SUM([고객수] * [LTV]) / SUM([고객수])` | `ltv_summary_export.csv` | `$7,773` |
+| **PSM 보정 효과** | `outcome='60일 리텐션 (binary)' AND method='PSM ATT'` 행의 `estimate × 100` | `psm_results.csv` | `+33.3pp` |
+
+KPI 4번의 정의 선택 이유: 단순 평균 재구매율보다 *인과추론으로 보정된 ATT*를 직접 노출하면 채용 담당자에게 분석 깊이가 더 명확하게 전달된다. 표시 단위는 percentage point (`pp`)로 통상적 binary ATT 표기를 따른다.
+
+평균 LTV의 *가중 평균* 식 (`SUM(고객수 × LTV) / SUM(고객수)`)을 쓰는 이유: 단순 `AVG(LTV)`는 세그먼트별 고객 수 차이를 무시해 작은 세그먼트(예: 기타 n=49)에 과대 가중. 가중 평균이 1,468명 전체의 LTV 평균을 정확히 산출한다.
 
 ### 메인 차트 4개 (높이 60%, 2×2 그리드)
 
 **좌상 — 세그먼트별 매출 비중 (Donut chart)**
-- 데이터: `customer_master_export.csv`의 세그먼트별 `SUM(Monetary)`
+- 데이터: `ltv_summary_export.csv` (Calculated field로 매출 derive — customer_master 원본 export 회피로 데이콘 라이선스 부담 0)
+- Calculated field 생성: **Analysis → Create Calculated Field → 이름 `매출_세그먼트별` → 수식 `[고객수] * [ARPU]`**
+  - 식 근거: `ARPU = AVG(Monetary)`는 누적 평균이므로 `고객수 × ARPU` = 세그먼트별 누적 총매출. `[고객수] * [LTV]`는 미래 가치 추정이라 도넛(현재 비중) 부적합.
+- 'ALL' 행은 필터로 제외 (도넛은 세그먼트 비중이라 ALL 미포함)
 - 강조: 핵심 파트너 (#E07B5B) + 성장형 (#4A90D9) 두 조각을 도넛 외곽으로 살짝 빼서 (`Tableau Show me → Donut`) 시각적 분리
-- 라벨: 각 세그먼트명 + 비중(%) + 절대 매출
+- 라벨: 각 세그먼트명 + 비중(%) + `[매출_세그먼트별]`
 - 중앙 텍스트: "핵심+성장형 = 68.2%" (Phase 2 발견)
 
 **우상 — 코호트 리텐션 히트맵**
@@ -81,7 +88,7 @@
 - 나머지 막대는 #4A90D9
 
 **우하 — 쿠폰 효과 비교 (점·CI 비교 차트)**
-- 데이터: `psm_export.csv` (단순 차이 / PSM ATT × 60일 리텐션 / 60일 매출)
+- 데이터: `psm_results.csv` (단순 차이 / PSM ATT × 60일 리텐션 / 60일 매출)
 - y축: 방법 (단순 차이 / PSM ATT), x축: ATT 추정치
 - 점 + 95% CI 가로 막대 (forest plot 형태)
 - 60일 리텐션 / 60일 매출 두 패널 (Tableau의 columns에 outcome 분할)
@@ -94,26 +101,13 @@
 - 주요 결과: ① 핵심+성장형 매출 68.2% ② 첫구매→재구매 8.51% 이탈 ③ 쿠폰 PSM ATT +33.3%p
 - 상세 분석: [github.com/jinwon25/ecommerce-customer-segmentation/tree/main/reports](https://github.com/jinwon25/ecommerce-customer-segmentation/tree/main/reports)
 
-## 3. 데이터 소스 — CSV Export 5개
+## 3. 데이터 소스 — CSV Export 4개
 
 BigQuery 콘솔에서 각 쿼리 실행 → 결과 화면 우측 **"Save Results → CSV (local file)"** 로 다운로드. 파일 위치: `tableau/data/`.
 
-### 3.1 `customer_master_export.csv` — 세그먼트별 집계 + 개별 행 (KPI + 도넛)
+데이콘 원본 데이터 재배포 회피를 위해 `customer_master`의 *개별 고객 행* CSV는 commit하지 않는다. 도넛·KPI는 모두 `segment_ltv_summary`에서 derive (Calculated field 사용).
 
-```sql
-SELECT
-  `고객ID`,
-  Customer_Segment AS `세그먼트`,
-  Recency,
-  Frequency,
-  Monetary
-FROM `ecomm-extension.ecomm_analysis.customer_master`
-ORDER BY Monetary DESC;
-```
-
-Tableau에서 세그먼트별 `SUM(Monetary)`·`COUNT(고객ID)`로 집계해 도넛·KPI에 사용.
-
-### 3.2 `cohort_retention_export.csv` — Long format (히트맵)
+### 3.1 `cohort_retention_export.csv` — Long format (히트맵)
 
 `cohort_retention` 테이블은 PIVOT 결과라 wide format. Tableau 히트맵에는 long format이 더 자연스러워 다시 unpivot.
 
@@ -140,7 +134,7 @@ UNPIVOT (
 ORDER BY `가입월`, CAST(`월차` AS INT64);
 ```
 
-### 3.3 `funnel_export.csv` — Funnel 결과
+### 3.2 `funnel_export.csv` — Funnel 결과
 
 ```sql
 -- sql/02_funnel.sql의 결과를 그대로 export.
@@ -152,7 +146,7 @@ ORDER BY `단계`;
 
 > **운영 메모**: 02_funnel.sql이 `CREATE OR REPLACE TABLE`로 시작하지 않으므로 결과를 한 번 테이블로 저장한 후 export. 또는 콘솔에서 SQL 결과를 직접 다운로드.
 
-### 3.4 `psm_export.csv` — 쿠폰 효과 비교 (Phase 3)
+### 3.3 `psm_results.csv` — 쿠폰 효과 비교 (Phase 3)
 
 Phase 3 노트북 셀 12의 `comparison` 변수를 그대로 CSV로 export. BigQuery 테이블이 아닌 노트북 변수라 Python에서 `comparison.to_csv('tableau/data/psm_export.csv', index=False)` 한 줄로 저장. 또는 다음 데이터를 수동 입력:
 
@@ -163,7 +157,7 @@ Phase 3 노트북 셀 12의 `comparison` 변수를 그대로 CSV로 export. BigQ
 | 60일 매출 (continuous) | 단순 차이 | 1208 | 72 | 487.46 | 403.33 | 601.84 |
 | 60일 매출 (continuous) | PSM ATT | 72 | 72 | 947.32 | 300.34 | 1985.72 |
 
-### 3.5 `ltv_summary_export.csv` — 세그먼트 LTV 요약
+### 3.4 `ltv_summary_export.csv` — 세그먼트 LTV 요약
 
 ```sql
 SELECT * FROM `ecomm-extension.ecomm_analysis.segment_ltv_summary`
@@ -172,7 +166,7 @@ ORDER BY
   LTV DESC;
 ```
 
-KPI 카드의 "평균 LTV" 산출에 사용.
+KPI 카드 3종(총 고객수·총 매출·평균 LTV)과 시트 1 도넛(매출_세그먼트별 Calculated field)의 메인 소스.
 
 ## 4. Tableau 작업 가이드 — 진원이 직접 단계
 
@@ -189,25 +183,26 @@ KPI 카드의 "평균 LTV" 산출에 사용.
 ### Step 2 — 데이터 로드 (예상 30분)
 
 1. Tableau 시작 → **Connect → To a File → Text file**
-2. `tableau/data/customer_master_export.csv` 선택
+2. `tableau/data/ltv_summary_export.csv` 선택 (도넛·KPI의 메인 소스)
 3. 좌측 데이터 패널에 테이블 추가
-4. 나머지 4개 CSV도 동일 방식으로 import
-5. **데이터 관계 정의** (Tableau의 Relationships, JOIN 아님):
-   - `customer_master_export.세그먼트` ↔ `ltv_summary_export.세그먼트`
-   - `customer_master_export.세그먼트` ↔ `cohort_retention_export.세그먼트` (직접 키 없음 — 가입월 기반 관계)
-   - `psm_export`, `funnel_export`는 독립 테이블로 사용 (관계 미정의)
+4. 나머지 3개 CSV (`cohort_retention_export`, `funnel_export`, `psm_results`)도 동일 방식으로 import
+5. **데이터 관계**: 4개 모두 독립 테이블로 사용. 시트마다 한 소스만 참조하므로 Relationships 정의 불필요. 필터(세그먼트·가입월·고객지역)는 시트별로 따로 적용 후 대시보드에서 연동.
 
 ### Step 3 — 시트 4개 작성 (예상 2시간)
 
 #### 시트 1: 세그먼트 매출 도넛
 
-1. 새 워크시트 → 이름 "세그먼트 매출 비중"
-2. `customer_master_export.세그먼트` → Color
-3. `SUM(Monetary)` → Angle
-4. Mark type → **Pie**
-5. 도넛 효과: dual axis로 작은 원을 중앙에 배치 (Tableau 표준 트릭, 검색어 "Tableau donut chart")
-6. 라벨: `세그먼트` + `SUM(Monetary)` + 비중%
-7. 색상: 5절 색상 팔레트 참조해 세그먼트별 RGB 수동 지정
+1. 새 워크시트 → 이름 "세그먼트 매출 비중", 데이터 소스 = `ltv_summary_export`
+2. **Analysis → Create Calculated Field**:
+   - 이름: `매출_세그먼트별`
+   - 수식: `[고객수] * [ARPU]`
+3. 필터: `세그먼트 ≠ 'ALL'` (도넛은 세그먼트 비중)
+4. `세그먼트` → Color
+5. `SUM([매출_세그먼트별])` → Angle
+6. Mark type → **Pie**
+7. 도넛 효과: dual axis로 작은 원을 중앙에 배치 (Tableau 표준 트릭, 검색어 "Tableau donut chart")
+8. 라벨: `세그먼트` + `[매출_세그먼트별]` + 비중%
+9. 색상: 5절 색상 팔레트 참조해 세그먼트별 RGB 수동 지정
 
 #### 시트 2: 코호트 히트맵
 
@@ -303,7 +298,7 @@ Tableau에서 수동 색상 입력: **Color → Edit Colors → 세그먼트 더
 | Step 4 — 대시보드 통합 + 필터 | 1시간 |
 | Step 5 — Tableau Public 게시 + URL 추가 | 30분 |
 | 디자인 미세 조정 (색상·정렬·여백) | 1시간 |
-| **합계** | **약 5.5시간** |
+| **합계** | **약 5시간** |
 
 Tableau 처음이면 +1~2시간 (시트 4의 forest plot이 가장 까다로움 — 검색어 "Tableau forest plot dual axis" 참고).
 
