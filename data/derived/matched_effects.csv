@@ -1,0 +1,5 @@
+outcome,method,n_treat,n_control,estimate,ci_lower,ci_upper,unit
+60일 재구매율,단순 차이,1208,72,25.55,20.14,30.24,percentage point
+60일 재구매율,72쌍 매칭 차이,72,72,34.72,22.22,45.83,percentage point
+60일 상품매출,단순 차이,1208,72,487.46,403.33,601.84,USD
+60일 상품매출,72쌍 매칭 차이,72,72,964.75,346.75,2047.27,USD

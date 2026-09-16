@@ -1,0 +1,16 @@
+.PHONY: charts tableau-data test check
+
+MPLCONFIGDIR ?= /tmp/ecommerce-customer-segmentation-mpl
+LOKY_MAX_CPU_COUNT ?= 1
+
+charts:
+	mkdir -p $(MPLCONFIGDIR)
+	MPLBACKEND=Agg MPLCONFIGDIR=$(MPLCONFIGDIR) XDG_CACHE_HOME=$(MPLCONFIGDIR) python scripts/build_portfolio_charts.py
+
+tableau-data:
+	python scripts/build_tableau_data.py
+
+test:
+	LOKY_MAX_CPU_COUNT=$(LOKY_MAX_CPU_COUNT) python -m unittest discover -s tests -p 'test_*.py' -v
+
+check: tableau-data test charts

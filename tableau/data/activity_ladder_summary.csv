@@ -1,0 +1,5 @@
+stage,stage_name,reached,previous_stage_conversion_pct,dropoff_pct,interpretation
+1,거래 고객,1468,,,2019년 거래ID가 1개 이상인 분석 모집단
+2,거래ID 2개 이상,1343,91.49,8.51,서로 다른 거래ID가 2개 이상인 고객
+3,거래ID 5개 이상,1139,84.81,15.19,서로 다른 거래ID가 5개 이상인 고객
+4,우선 관리 세그먼트,471,41.35,58.65,RFM 규칙상 핵심 파트너 또는 성장형 고객

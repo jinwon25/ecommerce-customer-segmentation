@@ -2,13 +2,16 @@
 *.csv
 *.xlsx
 
+# Public, aggregate-only snapshots used to rebuild portfolio charts
+!data/derived/
+!data/derived/*.csv
+!tableau/data/
+!tableau/data/*.csv
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Jupyter
-.ipynb_checkpoints/
 
 # OS
 .DS_Store

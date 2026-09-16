@@ -1,211 +1,147 @@
-# A/B 테스트 설계서 — 첫 구매 후 자동 쿠폰 발송
+# A/B 테스트 설계 초안 — 첫 구매 후 쿠폰 발송
 
-Phase 1~3 분석에서 도출된 발견을 검증하기 위한 무작위 배정 실험 설계. 본 문서는 실험팀에 그대로 전달 가능한 수준의 설계서로, 분석 방법·표본 크기·중단 규칙·부정적 시나리오 대응을 포함한다.
+쿠폰 `Used`와 `Clicked only` 고객의 관찰 차이를 무작위 실험으로 검증하기 위한 사전 설계다. 기존 PSM 수치는 표본 크기 입력값으로 사용하지 않는다. 운영 적용 전 eligibility 조건으로 대조군 baseline을 먼저 측정하고 표본 크기를 확정한다.
 
-## 1. 분석 배경 — Phase 1~3 결과의 결합
+## 1. 의사결정 질문
 
-본 설계의 출발점은 세 가지 발견.
+첫 구매 후 14일 동안 추가 구매가 없는 고객에게 할인 쿠폰을 보내면, 미발송 대비 이후 60일 재구매율과 공헌이익이 개선되는가? 10%와 30% 중 어느 수준이 더 높은 순증분 가치를 만드는가?
 
-**Phase 1 Funnel**. 첫 구매 → 재구매 단계가 가장 큰 비즈니스 이탈 지점 (8.51%). 매트릭스 1,468명 중 125명이 첫 거래 후 재구매 없이 이탈. 30일~60일 윈도우 안의 자극이 이 이탈을 줄일 수 있는지가 핵심 질문.
+## 2. 실험 단위와 모집단
 
-**Phase 3 PSM ATT**. 60일 재구매율의 PSM ATT가 **+33.3%p** (CI 0.208~0.444), 단순 차이도 +25.5%p로 양의 효과가 두 방법론에서 robust. 다만 매칭 페어 72쌍의 작은 표본·신규가입자 96% 편향·관측 변수 변별력 약함(McFadden R² 0.026)이라는 한계가 ATT 점추정의 신뢰성을 일부 제한한다.
+- **실험 단위**: 고객ID
+- **진입 시점(time zero)**: 첫 구매일 + 14일
+- **포함**: 진입 시점까지 두 번째 구매가 없는 신규 구매 고객
+- **제외**: 직원·테스트 계정, 환불·부정거래 계정, 쿠폰 수신 거부, 실험 기간 내 다른 할인 실험 참여자
+- **재진입**: 최초 배정만 인정. 동일 고객은 다시 무작위화하지 않음
+- **분석 원칙**: 발송·사용 여부와 무관하게 최초 배정군으로 분석하는 ITT
 
-**Phase 3 음의 dose-response**. 10% 쿠폰 ATT 0.405 vs 30% 쿠폰 ATT 0.227. 매칭 대조군 base rate 변동폭 9.1%p로 selection 차이가 아닌 처치 효과 자체의 패턴으로 확인됐다. 행동경제학의 한계 효용 체감 가설과 일치하지만, 단일 매칭 후 sub-group 분석의 인과 해석은 약하다.
+Time zero 이후 60일을 모든 군에 동일하게 관측한다. 기존 관찰연구의 첫 `Used`/`Clicked` 거래일과는 다른 정의이므로 두 결과를 직접 비교하지 않는다.
 
-세 발견의 결합 — **"첫 구매 후 자동 쿠폰 발송은 양의 효과가 있고, 10% dose가 30% dose보다 효율적일 가능성"** — 을 무작위 배정 실험으로 검증한다. A/B 테스트는 selection bias를 정의상 제거해 Phase 3의 한계를 직접 보완한다.
+## 3. 무작위 배정
 
-## 2. 가설 정의
+| arm | 정책 | 배정 비율 |
+|---|---|---:|
+| control | 쿠폰 미발송 | 1/3 |
+| coupon_10 | 10% 할인 쿠폰 발송 | 1/3 |
+| coupon_30 | 30% 할인 쿠폰 발송 | 1/3 |
 
-### H1 — 메인 가설 (쿠폰 발송 효과)
+고객ID의 deterministic hash로 배정하고, 플랫폼·첫 구매월·첫 구매 금액 구간을 층화 변수로 사용한다. 배정 로직 버전과 층화 값을 exposure log에 함께 저장한다.
 
-> 첫 구매 후 14일 내 자동 쿠폰 발송 시, 60일 재구매율이 baseline 대비 통계적으로 유의하게 상승한다.
+## 4. 가설과 지표
 
-- H1₀ (귀무): ATT = 0 (쿠폰 발송 효과 없음)
-- H1₁ (대립): ATT > 0 (양의 효과)
-- 검정 방향: 양측 (z-test 양측 p-value 보고하되 정책 결정은 H1₁ 방향 중심)
+### 1차 지표
 
-처치 시점이 *14일째*인 이유: Phase 1 Funnel에서 첫 구매 → 재구매 이탈이 가장 두꺼운 윈도우가 첫 30일이고, 그 안에서도 자연 재구매가 발생하지 않은 신규 고객을 14일째에 식별해 처치한다. 14일 미만이면 자연 재구매와 쿠폰 효과의 구분이 흐려진다.
+**60일 재구매율**: time zero 다음 날부터 60일 이내 주문을 1건 이상 완료한 고객 비율.
 
-### H2 — Dose 가설 (Phase 3 음의 dose-response 검증)
+가족 단위 1차 비교는 두 개다.
 
-> 10% 쿠폰의 ROI가 30% 쿠폰의 ROI보다 높다.
+1. `coupon_10 - control`
+2. `coupon_30 - control`
 
-- H2₀: 두 dose의 ROI 동일
-- H2₁: ROI(10%) > ROI(30%)
-- 검정 방향: 단측 (Phase 3 결과 방향성 명확)
-
-ROI는 *증분 매출 / 쿠폰 비용*. 두 dose 모두 양의 매출 효과를 만들더라도 30% 쿠폰은 1건당 비용이 3배라 ROI 측면에서 불리할 수 있다는 가설.
-
-### H3 — 교호작용 가설
-
-> 쿠폰 효과가 dose에 따라 다르다.
-
-- H3₀: 쿠폰 효과는 dose 무관 (additive)
-- H3₁: dose × treatment 교호작용 존재
-
-H3는 H2의 robustness check 성격. 교호작용이 강하면 dose별 sub-group 분석을 메인 결과로 격상한다.
-
-## 3. 처치 / 대조 정의
-
-### 모집단
-
-- 첫 구매를 발생시킨 신규 고객 (Phase 3 분석 모집단과 동일 정의)
-- 첫 구매 후 14일째까지 자연 재구매를 하지 않은 고객만 처치 대상으로 진입
-- 기존 고객·재구매 고객은 본 실험 대상이 아님 (외적 타당성 한계는 9절 참조)
-
-### 무작위 배정 — 3-arm 통합 설계
-
-설계 명세는 2×2 factorial로 출발했으나, dose는 처치에만 적용되므로 dose별 대조군을 분리할 필요가 없다. 표본 효율성을 위해 **3-arm**으로 통합한다.
-
-| arm | 정의 | 배정 비율 |
-|---|---|---|
-| control_unified | 쿠폰 미발송 (baseline) | 1/3 |
-| treat_10 | 10% 할인 쿠폰 발송 | 1/3 |
-| treat_30 | 30% 할인 쿠폰 발송 | 1/3 |
-
-배정은 첫 구매 14일째 시점에 균일 무작위. 사용자별 deterministic hash 기반 배정으로 동일 사용자 재진입 시 같은 arm 유지.
-
-## 4. 지표 정의
-
-### 1차 지표 — 60일 재구매율 (binary)
-
-처치 시점 후 60일 이내 1건 이상 거래 발생 여부. Phase 3와 동일 정의라 baseline·MDE 산정에 직접 활용 가능. 본 실험의 의사결정 기준 지표.
+두 비교의 family-wise error rate를 0.05로 유지한다. 구현이 단순해야 하면 Bonferroni로 각 비교 `α=0.025`를 쓰고, 분석 환경이 지원하면 공통 대조군을 고려하는 Dunnett 검정을 사용한다.
 
 ### 2차 지표
 
-- **60일 매출** (continuous): 처치 후 60일 누적 매출. 1차 지표와 같은 방향이면 효과의 *크기*까지 확인.
-- **ROI**: 증분 매출 / 쿠폰 비용. H2 가설의 직접 측정자. 쿠폰 비용은 발송 1건당 평균 할인액 × 실제 사용률로 산정.
-- **90일 재구매율**: 장기 효과 확인용. 단기 자극의 *지속성*을 가늠.
+- 고객당 60일 순매출
+- 고객당 60일 공헌이익
+- 쿠폰 사용률
+- `coupon_10 - coupon_30`의 재구매율·공헌이익 차이
 
-## 5. 표본 크기 산출
+### Guardrail
 
-### 입력값
+- 주문 취소·환불률
+- CS 문의율
+- 메시지 수신 거부율
+- 쿠폰 오발급·중복 사용률
 
-| 항목 | 값 | 근거 |
-|---|---|---|
-| baseline 재구매율 (control) | 0.05 | Phase 3 매칭 대조군 base rate 평균 (0.0270 / 0.0000 / 0.0909) |
-| target 재구매율 (treat) | 0.25 | baseline + MDE |
-| MDE (Minimum Detectable Effect) | 0.20 (= 20%p) | Phase 3 PSM ATT 33.3%p의 약 60%, 보수적 설계 |
-| α (Type I 오류) | 0.05 (양측) | 관행 |
-| Power (1 − β) | 0.80 | 관행 |
+## 5. 표본 크기
 
-### 산출 코드
+현재 데이터는 운영 eligibility 모집단의 baseline을 제공하지 않는다. 아래 표는 계획 범위를 보여주는 민감도 분석이며 최종 표본 수가 아니다. Power 80%, 양측 검정, 비교별 `α=0.025`, 동일 크기 3개 arm을 가정했다.
+
+| 대조군 baseline | 탐지할 절대 차이 | arm당 표본 | 총 표본(3-arm) |
+|---:|---:|---:|---:|
+| 5% | +3%p | 1,268 | 3,804 |
+| 5% | +5%p | 514 | 1,542 |
+| 5% | +10%p | 161 | 483 |
+| 10% | +3%p | 2,142 | 6,426 |
+| 10% | +5%p | 824 | 2,472 |
+| 10% | +10%p | 237 | 711 |
 
 ```python
-from scipy.stats import norm
-import math
+from math import ceil
+from statsmodels.stats.power import NormalIndPower
+from statsmodels.stats.proportion import proportion_effectsize
 
-p_c = 0.05            # control 재구매율 가정
-p_t = 0.25            # treatment 재구매율 가정 (= p_c + MDE)
-mde = p_t - p_c       # 0.20
-p_avg = (p_c + p_t) / 2  # 0.15
+p_control = 0.05
+mde = 0.05
+effect = proportion_effectsize(p_control + mde, p_control)
 
-z_alpha = norm.ppf(1 - 0.05 / 2)  # 1.960
-z_beta  = norm.ppf(0.80)          # 0.842
-
-# 비율 차이 검정의 표본 크기 공식 (pooled variance 가정)
-n_per_group = 2 * (z_alpha + z_beta)**2 * p_avg * (1 - p_avg) / mde**2
-n_per_group_ceiled = math.ceil(n_per_group)
-n_total_3arm = n_per_group_ceiled * 3
-
-print(f"per-group n = {n_per_group_ceiled}")
-print(f"total n (3-arm) = {n_total_3arm}")
+n_per_arm = ceil(
+    NormalIndPower().solve_power(
+        effect_size=effect,
+        power=0.80,
+        alpha=0.025,
+        ratio=1,
+        alternative="two-sided",
+    )
+)
+print(n_per_arm, n_per_arm * 3)
 ```
 
-### 산출 결과
+최종 표본 크기는 실험 직전 4~8주 운영 데이터에서 eligibility 고객의 baseline과 일일 유입량을 측정한 뒤 결정한다. 예상 모집 기간은 `총 표본 / 일일 eligible 고객 수`로 계산하고, 이후 모든 고객의 60일 outcome window가 닫힐 때까지 기다린다.
 
-| 항목 | 값 |
+## 6. 분석 계획
+
+### Primary ITT
+
+- 각 arm의 재구매율, 절대 차이(%p), risk ratio, 95% CI 보고
+- 1차 비교는 사전에 정한 다중 비교 보정 적용
+- 층화 변수로 조정한 logistic regression을 보조 분석으로 보고
+- 누락 outcome은 원인별로 집계하고, 주문 시스템 장애가 아니라면 ITT 분모에서 임의 제외하지 않음
+
+### 매출·공헌이익
+
+- 평균 차이와 customer-level bootstrap 95% CI 보고
+- 0이 많고 우측 꼬리가 길어도 비즈니스 의사결정 대상이 평균이므로 평균 차이를 주 지표로 유지
+- Mann–Whitney 검정은 분포 차이 보조 진단으로만 사용
+
+### 이질적 효과
+
+플랫폼·첫 구매 금액·첫 구매 카테고리는 사전 정의된 탐색 subgroup이다. subgroup 결과에는 interaction CI를 함께 보고하며, 표본 크기가 부족하면 정책 결론을 내리지 않는다.
+
+## 7. 중단과 의사결정
+
+- 기본은 **고정 표본·고정 기간** 설계다. 결과를 반복 확인해 유의하면 멈추는 방식은 사용하지 않는다.
+- 결제·쿠폰 시스템 장애, 오발송, guardrail의 중대한 악화는 통계적 유의성과 무관하게 운영 중단 사유다.
+- 효능 조기 중단이 꼭 필요하면 실험 시작 전에 group-sequential boundary와 분석 시점을 별도로 확정한다.
+
+출시 판단은 재구매율 하나가 아니라 공헌이익과 guardrail을 함께 본다.
+
+| 결과 | 판단 |
 |---|---|
-| Per-group n | **51명** |
-| Total n (3-arm) | **153명** |
-| 일일 신규 신규가입자 가정 100명 시 | 약 **2일치 트래픽** |
+| 재구매율↑, 공헌이익↑, guardrail 정상 | 해당 arm 출시 후보 |
+| 재구매율↑, 공헌이익↓ | 할인 비용·대상·만료기간 재설계 |
+| 재구매율 차이 없음 | 전면 발송 중단 또는 더 정밀한 타깃 실험 |
+| guardrail 악화 | 효과와 무관하게 중단·원인 조사 |
 
-표본이 작아 보이는 이유는 MDE 20%p가 absolute로 크기 때문 (baseline 5% → target 25%는 5배 변화). 만약 실제 효과가 10%p에 그치면 power 부족이라, MDE 보수 시나리오 (10%p)에서는 per-group n ≈ 200, total ≈ 600명이 필요.
+## 8. 필수 로깅
 
-본 설계는 *Phase 3 PSM 결과의 검증*이 1차 목적이라 MDE 20%p가 합리적. 실제 운영 시 보수 시나리오 표본도 함께 준비.
+| 영역 | 필드 예시 |
+|---|---|
+| assignment | customer_id, experiment_id, variant, assigned_at, hash_version, strata |
+| delivery | coupon_id, sent_at, delivered_at, failure_reason |
+| redemption | redeemed_at, order_id, discount_amount |
+| outcome | order_at, net_revenue, contribution_margin, refund_at |
+| guardrail | cs_ticket_at, opt_out_at, fraud_flag |
 
-### MDE 보수 시나리오 비교
+배정 테이블은 append-only로 유지하고, 분석 쿼리에서 assignment 이후 이벤트만 사용한다. 실험 시작 전 A/A 테스트 또는 sample-ratio-mismatch 점검으로 배정·로깅 이상을 확인한다.
 
-| MDE | per-group n | total n |
-|---|---|---|
-| 20%p (메인) | 51 | 153 |
-| 10%p (보수) | 200 | 600 |
-| 5%p (매우 보수) | 800 | 2,400 |
+## 9. 아직 필요한 운영 입력
 
-## 6. 분석 방법
+- eligibility 고객의 실제 60일 baseline
+- 일일 eligible 고객 수와 시즌 변동
+- 할인 비용을 반영한 공헌이익 정의
+- 다른 캠페인과의 중복 노출 정책
+- 쿠폰 전달 실패·미사용을 포함한 ITT 데이터 연결률
 
-### H1 — 메인 분석
-
-- **검정 방법**: 두 비율의 z-검정 (`statsmodels.stats.proportion.proportions_ztest`)
-  - 처치군 = (treat_10 ∪ treat_30) vs 대조군 (control_unified)
-  - 양측 p-value + 95% CI 동시 보고
-- **로지스틱 회귀** 병행: `재구매 ~ treatment + 가입기간 + 첫거래월` (사전 정의된 공변량 보정으로 점추정 안정화)
-
-선택 이유: 비율 검정은 메인 결정 지표라 단순·해석 명료. 로지스틱은 공변량 보정으로 분산을 줄이고 robustness 확인. 두 결과가 일치하면 결정의 신뢰도 강화, 불일치면 별도 검토.
-
-### H2 — Dose 분석
-
-- **두 비율 검정**: treat_10 vs treat_30의 60일 재구매율
-- **Mann-Whitney U-test**: 60일 매출 분포의 위치 차이 (매출은 right-skewed 분포 예상이라 평균 t-test 부적합)
-- **ROI**: 증분 매출 / 쿠폰 비용 산출 + bootstrap 1,000회 95% CI
-
-### H3 — 교호작용
-
-- **로지스틱 회귀**: `재구매 ~ treatment + dose + treatment:dose + 공변량`
-- `treatment:dose` 계수의 p-value로 교호작용 존재 검정
-- 교호작용 p < 0.10에서 dose별 sub-group이 의미 — H2 결과를 메인 결과로 격상
-
-## 7. Stopping Rule + 부정적 시나리오 대응
-
-### 중간 점검 (interim analysis)
-
-- 누적 표본의 50% 시점에 한 번
-- 다중 비교 보정으로 **O'Brien-Fleming spending function** 적용 (중간 시점 α₁ = 0.003, 최종 α₂ = 0.047)
-- Pocock 대비 O'Brien-Fleming은 중간 중단 임계값이 더 엄격해 거짓 양성을 줄이는 대신 최종 분석의 power 손실이 적다 — 본 실험의 *결정의 신중함*과 부합
-
-### 조기 중단 조건
-
-| 시나리오 | 조건 | 처리 |
-|---|---|---|
-| 강한 양의 효과 | 중간 점검에서 처치 효과 크기가 baseline 1.5배 이상 + p < 0.003 | 조기 종료 검토 (성공적 종료) |
-| 강한 부정 효과 | 처치군 재구매율이 대조군보다 명확히 낮음 (p < 0.003) | 즉시 중단 |
-| 안전성 우려 | 처치군의 환불·CS 문의가 baseline 2배 초과 | 비즈니스 KPI 우선, 중단 |
-
-### 부정적 시나리오 3가지 사전 대응
-
-**시나리오 1 — 처치 효과 무 (ATT ≈ 0, p > 0.05)**
-
-쿠폰 발송이 신규 고객 재구매에 효과 없음. Phase 3의 양의 ATT가 selection bias 잔재로 설명됐을 가능성. 대응: 캠페인 비효율 결론, Phase 5 GA Sample 분석으로 다른 funnel 지점 (방문 → 상품뷰, 상품뷰 → 장바구니 등)에서 개선 여지를 확인.
-
-**시나리오 2 — 양의 dose-response (Phase 3과 반대)**
-
-10% 쿠폰 ATT < 30% 쿠폰 ATT가 관측되면 Phase 3의 음의 패턴이 본 데이터 특수 사례였음을 인정. 대응: 두 결과 비교 노트 (`reports/dose_response_reconciliation.md`)를 별도 작성, 데이터 특성 차이 (Phase 3는 관측 데이터 매칭, A/B는 무작위 배정)를 분석가의 정직성 메시지로 사용.
-
-**시나리오 3 — Interaction 강함 (H3 유의)**
-
-dose × treatment 교호작용이 p < 0.10이면 dose별 sub-group 분석을 메인 결과로 격상. 대응: dose별 ATT를 따로 보고하고 ROI 비교로 정책 결정. H1·H2를 통합 해석하기 어려운 데이터라는 결론.
-
-## 8. Phase 3 결과와의 연결
-
-본 설계의 모든 입력값은 Phase 3 PSM 결과에서 직접 도출.
-
-| 설계 항목 | Phase 3 출처 | 활용 방식 |
-|---|---|---|
-| MDE 20%p | PSM ATT 33.3%p × 60% | 보수적 baseline |
-| Baseline 재구매율 0.05 | Phase 3 매칭 대조군 base rate 평균 | 표본 산정 input |
-| H2 단측 검정 | Phase 3 음의 dose-response | 방향성 명확해 검정력 확보 |
-| 14일 처치 시점 | Phase 1 Funnel 8.51% 이탈 지점 + Phase 2 IPT p50(핵심 27일·성장형 36일) | 자연 재구매와 쿠폰 효과 구분 |
-
-A/B 테스트는 무작위 배정으로 selection bias를 *정의상* 제거. Phase 3에서 PSM이 보정하지 못한 unobserved confounder도 자연 균형 → Phase 3의 ignorability 가정 한계를 직접 보완.
-
-## 9. 한계와 Future Work
-
-본 설계서는 데이콘 데이터의 분석 결과를 베이스로 한 *시뮬레이션 설계*. 실제 운영 데이터로 검증 전제. 추가로 다음 3가지는 본 설계 범위 밖.
-
-1. **30% 이상 dose의 비선형성** — 50% 쿠폰까지 확장한 4-arm 설계로 dose-response의 임계점 (50% 쿠폰이 30%보다 효과 더 큰지·아니면 더 작은지) 확인. 본 설계는 Phase 3 데이터 범위 안.
-2. **기존 고객 모집단 확장** — 본 설계는 신규 고객 대상. 기존 고객 (재구매 경험 있는)에서 효과 크기가 다를 가능성 있어 별도 sub-group A/B 가치 있음.
-3. **시즈널리티 통제** — Phase 2 발견 (3월·6월 코호트 강세)을 반영해 시즌 효과를 배정에서 통제하는 *층화 무작위 배정* (stratified randomization)도 고려. 시즌별로 1:1:1 비율 유지.
-
----
-
-본 설계서가 그대로 운영팀·실험팀에 전달 가능한 수준으로 작성되었는지, 누락된 항목이 있는지 (예: 데이터 파이프라인·로깅 정의)는 별도 운영 문서에서 보완한다. 본 문서는 분석 측면의 가설·검정·표본 산출까지 다룬다.
+이 값이 채워져야 설계가 운영 승인 가능한 최종안이 된다.
