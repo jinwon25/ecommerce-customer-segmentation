@@ -7,5 +7,8 @@
 | `psm_methodology.md` | 72쌍 매칭 방법과 결과 한계 | 방법론 |
 | `causal_identification_review.md` | 쿠폰 비교가 식별하는 것과 필요한 로그 | 방법론 |
 | `ab_test_design.md` | 3-arm 무작위 실험 초안 | 운영값 확정 전 |
+| `team_project_presentation.pdf` | 초기 4인 팀 프로젝트 발표자료 | 당시 분석 과정 보존용 |
 
 `LTV`, `ATT`, `가입 funnel`이라는 표현은 각각 미래가치 모델, 대표성 있는 처치효과, 비구매 가입자까지 포함한 행동 로그가 있을 때만 사용한다.
+
+팀 발표자료는 당시의 탐색 과정과 협업 산출물을 보여주는 원본이다. 현재 지표 정의와 결론은 루트 README, `sql/`, `reports/`의 Markdown 문서를 우선한다.

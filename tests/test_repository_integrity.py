@@ -1,4 +1,5 @@
 import ast
+import json
 import re
 import unittest
 from pathlib import Path
@@ -13,6 +14,22 @@ class RepositoryIntegrityTest(unittest.TestCase):
         for path in [*ROOT.glob("scripts/*.py"), *ROOT.glob("tests/*.py")]:
             with self.subTest(path=path.relative_to(ROOT)):
                 ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+    def test_notebooks_are_valid_and_executed(self) -> None:
+        notebooks = list(ROOT.glob("notebooks/*.ipynb"))
+        self.assertTrue(notebooks)
+        for path in notebooks:
+            with self.subTest(path=path.relative_to(ROOT)):
+                notebook = json.loads(path.read_text(encoding="utf-8"))
+                code_cells = [
+                    cell for cell in notebook.get("cells", [])
+                    if cell.get("cell_type") == "code"
+                ]
+                self.assertEqual(notebook.get("nbformat"), 4)
+                self.assertTrue(code_cells)
+                self.assertTrue(
+                    all(cell.get("execution_count") is not None for cell in code_cells)
+                )
 
     def test_local_markdown_links_exist(self) -> None:
         missing: list[str] = []

@@ -7,6 +7,7 @@
 | 공개 집계 파일 | 고객 수·매출 비중·코호트 관측 삼각형·CI 범위 unit test | 통과 |
 | README 대표 차트 5개 | `make charts`로 비식별 집계에서 재생성 | 통과 |
 | Markdown 링크·Python 문법 | repository integrity test | 통과 |
+| 분석 워크북 | `make notebook`으로 모든 코드 셀 재실행 | 통과 |
 | 원본→세그먼트·활동 단계·코호트 | `scripts/validate_source_data.py`로 동일 공개 데이터셋 사본과 대조 | 통과 |
 | GitHub Actions | push/PR에서 테스트·Tableau 집계·차트 빌드 | workflow 구성 완료 |
 | BigQuery SQL | pandas 독립 구현과 산식·집계 대조 | 의미 검증 통과, BigQuery 재실행 전 |

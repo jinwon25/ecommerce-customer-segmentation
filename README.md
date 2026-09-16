@@ -1,5 +1,7 @@
 # 이커머스 고객 세분화와 재구매 분석
 
+[![Portfolio quality](https://github.com/jinwon25/ecommerce-customer-segmentation/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/jinwon25/ecommerce-customer-segmentation/actions/workflows/quality.yml)
+
 2019년 이커머스 거래 52,924행·고객 1,468명을 RFM 세그먼트, 첫 구매월 코호트, 구매 간격, 쿠폰 사용 관찰연구로 분석한 프로젝트입니다. 2025년 4인 팀 분석을 바탕으로 SQL 파이프라인과 검증·실험 설계를 단독 확장했습니다.
 
 > 핵심 목표는 “복잡한 기법을 많이 사용했다”가 아니라, 고객가치 집중과 재구매 시점을 측정하고 관찰 데이터에서 얻은 가설을 다음 실험으로 연결하는 것입니다.
@@ -131,6 +133,7 @@ python scripts/run_coupon_matching.py \
 ├── data/
 │   ├── README.md
 │   └── derived/                 # 공개 가능한 집계 결과
+├── notebooks/                   # 현재 결과를 재계산하는 실행 워크북
 ├── reports/                     # 방법론·실험 설계 상세
 ├── scripts/                     # README 차트 재생성
 ├── sql/                         # BigQuery Standard SQL
@@ -158,6 +161,8 @@ python scripts/run_coupon_matching.py \
 - [시각화 인덱스](visualizations/README.md)
 - [SQL 실행 순서와 해석 가드레일](sql/README.md)
 - [재현성 점검 결과](reports/reproducibility.md)
+- [실행 가능한 분석 워크북](notebooks/analysis_workbook.ipynb)
+- [초기 팀 프로젝트 발표자료](reports/team_project_presentation.pdf)
 
 ---
 

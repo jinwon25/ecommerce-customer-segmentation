@@ -30,3 +30,4 @@ jobs:
           test -s visualizations/matched_outcome_differences.png
           test -s visualizations/psm_love_plot.png
           test -s tableau/data/cohort_retention_long.csv
+          test -s notebooks/analysis_workbook.ipynb
